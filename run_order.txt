@@ -3,7 +3,7 @@ Title: Revealing agricultural drought sensitivity through a soil moisture
  threshold-based framework integrating modeled and satellite data
 Purpose: Run order
 Authors: Abdul Baqi Ahady, Stefanie Wolf, Elena-Maria Klopries
-Date: Jan 2026
+Date: March 2026
 
 
 
