@@ -1,0 +1,59 @@
+============================================================
+Title: Revealing agricultural drought sensitivity through a soil moisture
+ threshold-based framework integrating modeled and satellite data
+Purpose: Run order
+Authors: Abdul Baqi Ahady, Stefanie Wolf, Elena-Maria Klopries
+Date: Jan 2026
+
+
+
+Run Order for SM–VCI Coupling Analysis
+=====================================
+
+Please execute the scripts in the following order:
+
+1. Data preprocessing and VCI extraction.R
+   - Preprocess soil moisture (% nFK) data from DWD
+   - Extract and compute VCI from NDVI (MODIS/GEE)*,
+   - Output: cleaned and aligned SM and VCI datasets
+
+2. Drought characterization and identification (F.7).R
+   - Identify drought events based on soil moisture conditions
+   - Output: drought periods and classification
+
+3. SM threshold-based framework definition (F.9).R
+   - Define soil moisture thresholds for drought sensitivity
+   - Output: threshold values and optimal SM threshold
+
+4. SM-VCI LOO-CV cross validation (Fig A2).R
+   - calculate leave-one-out cross correlation for all the period
+   - comparison of Pearson and Spearman cor. factors
+   - Output: validation results and visualization
+
+5. Baseline and monthly faceted correlation (F.8).R
+   - Compute correlations between SM and VCI
+   - Includes baseline and monthly analysis
+   - Output: correlation metrics and plots
+
+6. Correlation visualization (violin_plot) (F.11).R
+   - Generate violin plots of SM–VCI correlations
+   - Output: visualization figures
+
+7. Spatial patterns of cor under water-limited conditions.R
+   - Analyze spatial variability of correlations
+   - Focus on water-limited regimes
+
+8. Landcover-based clustering of SM-VCI Cor. (F.1...).R
+   - Cluster correlation patterns by land cover type
+   - Output: clustered spatial patterns
+
+*Additional:
+-----------
+- GEE code for VCI calculation.txt
+  → Run in Google Earth Engine if VCI data is not precomputed
+
+Notes:
+------
+- Ensure all required R packages are installed (see requirements.R)
+- Set working directories and file paths before running scripts
+- Some scripts depend on outputs from previous steps

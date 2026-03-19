@@ -1,0 +1,123 @@
+// ===================== 1. Area and time period Setup ===================== //
+
+var startDate = '2000-01-01';
+var endDate = '2024-12-31';
+
+// NOTE: the Region of Interest (ROI) is added as var in the Imports interies.
+
+// Here we call the MODIS collection
+var modis = ee.ImageCollection('MODIS/061/MOD13Q1')
+  .filterDate(startDate, endDate)     //filtering for the time period
+  .filterBounds(ROI)                  //filtering for the area
+  .select('NDVI');                    //filter for the NDVI band
+
+Map.centerObject(ROI, 9);
+
+// ===================== 2. Calculating VCI ===================== //
+
+// We calculate NDVI min/max over the entire 25-year reference period (2000-2024)
+var ndviMin = modis.reduce(ee.Reducer.min());
+var ndviMax = modis.reduce(ee.Reducer.max());
+
+// Function to calculate VCI for each MODIS 16-day composite
+var vciCollection = modis.map(function(img) {
+  var vci = img.subtract(ndviMin).divide(ndviMax.subtract(ndviMin))
+                .multiply(100).rename('VCI');
+  return vci.copyProperties(img, ['system:time_start']);
+});
+
+// ===================== 3. Monthly VCI for a specific month (2000–2024) ===================== //
+
+// Define the target month (e.g., October = 10)  
+var targetMonth = 10;         // we repeated this for each individual month
+var targetMonthName = 'Oct';
+var monthString = '10';       // String for file naming (e.g., VCI_2000_10)
+
+// whith this line of code we get a list of years from the collection date range (2000 to 2024)
+var years = ee.List.sequence(2000, 2024);
+
+// We map over the years to calculate the mean VCI for each month in each year
+var monthlyVCICollection = years.map(function(year) {
+  year = ee.Number(year).toInt();
+
+  // We filter VCI Collection for the target year and target month
+  var yearlyMonthVCI = vciCollection
+    .filter(ee.Filter.calendarRange(year, year, 'year'))
+    .filter(ee.Filter.calendarRange(targetMonth, targetMonth, 'month'));
+    
+  // We calculate the mean VCI for targeted month of that specific year
+  var meanVCI = yearlyMonthVCI
+    .mean()
+    .clip(ROI)
+    
+    // We set a consistent band name (VCI) and store year as a property
+    .rename('VCI') 
+    .set('year', year); 
+
+  return meanVCI;
+});
+
+// We convert the list of yearly rasters into an Image Collection
+var finalMonthlyVCI = ee.ImageCollection(monthlyVCICollection);
+
+
+// ===================== 4. Display and Export ===================== //
+
+// Visualization parameters
+var visParams = {min: 0, max: 100, palette: ['red', 'yellow', 'green']};
+
+// 1. Displaying the Overall targeted monthly Mean VCI across all years
+// The .mean() operation on the collection returns a single image of overall mean
+// of the targeted month through the study period.
+var overallMeanMonthlyVCI = finalMonthlyVCI.mean().clip(ROI);
+Map.addLayer(overallMeanMonthlyVCI, 
+             visParams, 
+             'Overall Mean VCI - ' + targetMonthName);
+
+// 2. Displaying the VCI for a specific month and year (e.g., Oct, 2023)
+// We must explicitly use .first() to get a single image from the filtered collection.
+var VCI_2023 = finalMonthlyVCI.filter(ee.Filter.eq('year', 2023)).first();
+Map.addLayer(VCI_2023, 
+             visParams, 
+             'VCI ' + targetMonthName + ' 2023');
+
+// 3. Exporting each monthly raster 
+var yearsToExport = years.getInfo();
+yearsToExport.forEach(function(y) {
+  var imageToExport = finalMonthlyVCI.filter(ee.Filter.eq('year', y)).first();
+  
+  // Format the filename string as "VCI_2000_10.tif"
+  var fileName = ee.String('VCI_').cat(ee.Number(y).format('%d')).cat('_').cat(monthString);
+  
+  Export.image.toDrive({
+    image: imageToExport,
+    // Using the formatted filename for the description
+    description: fileName.getInfo(), 
+    scale: 250,
+    region: ROI,
+    fileFormat: 'GeoTIFF',
+    folder: 'GEE_October_VCI_Annual'
+  });
+});
+
+// ======= 5. Annual Mean VCI calculation for the growing season(Apr–Sep) ======== //
+var years = ee.List.sequence(2000, 2024);
+
+years.getInfo().forEach(function(y) {
+  var yearlyVCI = vciCollection
+    .filterDate(ee.Date.fromYMD(y, 4, 1), ee.Date.fromYMD(y, 9, 30))
+    .mean()
+    .clip(ROI)
+    .rename('VCI');
+    
+  Map.addLayer(yearlyVCI, {min: 0, max: 100, palette: ['red', 'yellow', 'green']}, 
+               'Mean VCI - ' + y);
+  
+  // Export.image.toDrive({
+  //   image: yearlyVCI,
+  //   description: 'Mean_VCI_' + y,
+  //   scale: 250,
+  //   region: ROI,
+  //   fileFormat: 'GeoTIFF'
+  // });
+});
